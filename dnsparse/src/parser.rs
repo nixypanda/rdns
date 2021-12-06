@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    types::{DnsHeader, DnsPacket, DnsQuestion, DnsRecord, QueryType, ResultCode},
+    types::{DnsHeader, DnsPacket, DnsQuestion, DnsRecord, QueryType, ResponseCode},
     utils::isperse,
 };
 use log::trace;
@@ -134,7 +134,7 @@ where
         let authoritative_answer = (a & (1 << 2)) > 0;
         let opcode = (a >> 3) & 0x0F;
         let response = (a & (1 << 7)) > 0;
-        let rescode = ResultCode::from_num(b & 0x0F);
+        let rescode = ResponseCode::from_num(b & 0x0F);
         let checking_disabled = (b & (1 << 4)) > 0;
         let authed_data = (b & (1 << 5)) > 0;
         let z = (b & (1 << 6)) > 0;
@@ -349,7 +349,7 @@ mod test {
             z: false,
             authed_data: true,
             checking_disabled: false,
-            rescode: ResultCode::NOERROR,
+            rescode: ResponseCode::NOERROR,
 
             questions: 1,
             answers: 0,
@@ -372,7 +372,7 @@ mod test {
             z: false,
             authed_data: true,
             checking_disabled: false,
-            rescode: ResultCode::NOERROR,
+            rescode: ResponseCode::NOERROR,
 
             questions: 1,
             answers: 1,
@@ -511,7 +511,7 @@ mod test {
             authoritative_answer: false,
             opcode: 0,
             response: true,
-            rescode: ResultCode::NOERROR,
+            rescode: ResponseCode::NOERROR,
             checking_disabled: false,
             authed_data: false,
             z: false,
@@ -603,7 +603,7 @@ mod test {
             authoritative_answer: false,
             opcode: 0,
             response: true,
-            rescode: ResultCode::NOERROR,
+            rescode: ResponseCode::NOERROR,
             checking_disabled: false,
             authed_data: false,
             z: false,

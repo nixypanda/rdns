@@ -46,9 +46,9 @@ pub struct DnsHeader {
     #[builder(default = false)]
     pub authed_data: bool, // 1 bit
     #[builder(default = false)]
-    pub checking_disabled: bool, // 1 bit
-    #[builder(default = ResultCode::NOERROR)]
-    pub rescode: ResultCode, // 4 bits
+    pub checking_disabled: bool,
+    #[builder(default = ResponseCode::NOERROR)]
+    pub rescode: ResponseCode, // 4 bits
 
     #[builder(default = 0)]
     pub questions: u16, // 16 bits
@@ -72,6 +72,43 @@ impl DnsHeader {
             | ((self.authoritative_answer as u16) << 10)
             | ((self.opcode as u16) << 11)
             | ((self.response as u16) << 15)
+    }
+}
+
+//  Response code - this 4 bit field is set as part of responses.  The values have the following
+//  interpretation:
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ResponseCode {
+    // No error condition
+    NOERROR = 0,
+    // Format error - The name server was unable to interpret the query.
+    FORMERR = 1,
+    // Server failure - The name server was unable to process this query due to a problem with the
+    // name server.
+    SERVFAIL = 2,
+    // Name Error - Meaningful only for responses from an authoritative name server, this code
+    // signifies that the domain name referenced in the query does not exist.
+    NXDOMAIN = 3,
+    // Not Implemented - The name server does not support the requested kind of query.
+    NOTIMP = 4,
+    // Refused - The name server refuses to perform the specified operation for policy reasons.
+    // For example, a name server may not wish to provide the information to the particular
+    // requester, or a name server may not wish to perform a particular operation (e.g., zone
+    // transfer) for particular data.
+    REFUSED = 5,
+    //  6-15  Reserved for future use.
+}
+
+impl ResponseCode {
+    pub fn from_num(num: u8) -> ResponseCode {
+        match num {
+            1 => ResponseCode::FORMERR,
+            2 => ResponseCode::SERVFAIL,
+            3 => ResponseCode::NXDOMAIN,
+            4 => ResponseCode::NOTIMP,
+            5 => ResponseCode::REFUSED,
+            _ => ResponseCode::NOERROR,
+        }
     }
 }
 
@@ -171,14 +208,14 @@ impl DnsPacket {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.header.rescode != ResultCode::NOERROR
+        self.header.rescode != ResponseCode::NOERROR
     }
 
     pub fn has_answers(&self) -> bool {
         !self.answers.is_empty()
     }
 
-    pub fn rescode(&self) -> ResultCode {
+    pub fn rescode(&self) -> ResponseCode {
         self.header.rescode
     }
 

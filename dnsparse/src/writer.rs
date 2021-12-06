@@ -227,7 +227,7 @@ mod test {
     use pretty_assertions::assert_eq;
     use std::net::Ipv4Addr;
 
-    use crate::types::ResultCode;
+    use crate::types::ResponseCode;
 
     use super::*;
 
@@ -267,7 +267,7 @@ mod test {
             z: false,
             authed_data: true,
             checking_disabled: false,
-            rescode: ResultCode::NOERROR,
+            rescode: ResponseCode::NOERROR,
 
             questions: 1,
             answers: 1,

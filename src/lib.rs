@@ -1,4 +1,4 @@
-pub use dnsparse::{write_packet, DnsHeader, DnsPacket, DnsQuestion, QueryType, ResultCode};
+pub use dnsparse::{write_packet, DnsHeader, DnsPacket, DnsQuestion, QueryType, ResponseCode};
 use log::{debug, error, info, warn};
 use std::{
     convert::TryFrom,
@@ -37,14 +37,14 @@ pub fn resolve(request: DnsPacket) -> anyhow::Result<DnsPacket> {
                     .build()
             }
             Err(error) => {
-                let header = base_header_builder.rescode(ResultCode::SERVFAIL).build();
+                let header = base_header_builder.rescode(ResponseCode::SERVFAIL).build();
                 let response = DnsPacket::builder().header(header).build();
                 error!("Server failure: {:?}", error);
                 response
             }
         }
     } else {
-        let header = base_header_builder.rescode(ResultCode::FORMERR).build();
+        let header = base_header_builder.rescode(ResponseCode::FORMERR).build();
         let response = DnsPacket::builder().header(header).build();
         error!("Client provided insufficient info: {:#?}", response);
         response
@@ -64,12 +64,12 @@ pub fn recursive_lookup(qname: &str, qtype: QueryType) -> anyhow::Result<DnsPack
         let ns_copy = ns;
         let response = lookup(qname, qtype, ns_copy)?;
 
-        if response.has_answers() && response.rescode() == ResultCode::NOERROR {
+        if response.has_answers() && response.rescode() == ResponseCode::NOERROR {
             info!("Found entries without any errors {:?}", response);
             return Ok(response);
         }
 
-        if response.rescode() == ResultCode::NXDOMAIN {
+        if response.rescode() == ResponseCode::NXDOMAIN {
             warn!(
                 "Authoritative servers {:?} says name {} ({:?}) does not exist",
                 ns, qname, qtype
