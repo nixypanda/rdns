@@ -1,5 +1,6 @@
 use std::{
     cmp::min_by_key,
+    convert::TryFrom,
     net::{Ipv4Addr, Ipv6Addr},
 };
 
@@ -7,7 +8,7 @@ use crate::{
     types::{DnsHeader, DnsPacket, DnsQuestion, DnsRecord, QueryType, ResultCode},
     utils::isperse,
 };
-use log::{debug, trace};
+use log::trace;
 use nom::{
     bytes::{complete::take as take_bytes, complete::take_while},
     error::ParseError,
@@ -256,6 +257,21 @@ pub fn packet<'a>(input: &'a [u8], original: &'a [u8]) -> IResult<&'a [u8], DnsP
     };
 
     Ok((rest, dns_packet))
+}
+
+impl<'a> TryFrom<&'a [u8]> for DnsPacket {
+    type Error = String;
+
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        match packet(&value, &value) {
+            Ok(([], cl)) => Ok(cl),
+            Ok((s, _)) => Err(format!(
+                "Parsing Error: Unable to parse the whole dns packet\nRemaining Tokens: {:?}",
+                s
+            )),
+            Err(e) => Err(format!("Parsing Error: {:?}", e)),
+        }
+    }
 }
 
 #[cfg(test)]

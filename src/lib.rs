@@ -1,35 +1,13 @@
-mod parser;
-mod types;
-mod utils;
-mod writer;
-
+pub use dnsparse::{write_packet, DnsHeader, DnsPacket, DnsQuestion, QueryType, ResultCode};
 use log::{debug, error, info, warn};
-pub use parser::packet as dns_packet_parser;
 use std::{
     convert::TryFrom,
     net::{Ipv4Addr, UdpSocket},
 };
-pub use types::{DnsHeader, DnsPacket, DnsQuestion, QueryType, ResultCode};
-pub use writer::write as write_packet;
 
 pub const MAX_PACKET_SIZE: usize = 512;
 pub const ROOT_DNS_SERVER: (Ipv4Addr, u16) = (Ipv4Addr::new(198, 41, 0, 4), 53);
 pub const RECURSIVE_DNS_SERVER: (Ipv4Addr, u16) = (Ipv4Addr::new(8, 8, 8, 8), 53);
-
-impl<'a> TryFrom<&'a [u8]> for DnsPacket {
-    type Error = String;
-
-    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
-        match dns_packet_parser(&value, &value) {
-            Ok(([], cl)) => Ok(cl),
-            Ok((s, _)) => Err(format!(
-                "Parsing Error: Unable to parse the whole dns packet\nRemaining Tokens: {:?}",
-                s
-            )),
-            Err(e) => Err(format!("Parsing Error: {:?}", e)),
-        }
-    }
-}
 
 pub fn resolve(request: DnsPacket) -> anyhow::Result<DnsPacket> {
     let base_header_builder = DnsHeader::builder()

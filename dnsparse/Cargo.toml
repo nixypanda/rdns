@@ -1,21 +1,13 @@
 [package]
-name = "rdns"
+name = "dnsparse"
 version = "0.1.0"
-authors = ["Sherub Thakur <sherub.thakur@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[workspace]
-members = [ "dnsparse" ]
-
 [dependencies]
-bitvec = "0.17.4"
+nom = "7.0"
 pretty_assertions = "0.7"
 anyhow = "1.0"
 typed-builder = "0.9"
 log = "0.4"
-env_logger = "0.9"
-structopt = "0.3" 
-rand = "0.7"
-dnsparse = { path = "./dnsparse/" }
