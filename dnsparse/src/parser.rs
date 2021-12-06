@@ -69,7 +69,9 @@ where
     }
 }
 
-// TODO: Refactor this crap
+// WARN: This does not consider infinite loop attack here. Someone can easily create an input and
+// this function will just loop infinitely. Will error out with stack overflow given the recursive
+// nature of how parser combinators work.
 fn domain_name<'a, E>(original: &'a [u8]) -> impl FnMut(&'a [u8]) -> IResult<&'a [u8], String, E>
 where
     E: ParseError<&'a [u8]>,
