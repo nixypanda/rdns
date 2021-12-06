@@ -9,7 +9,7 @@ static UDP_RESPONSE_LISTENER: (&str, u16) = ("0.0.0.0", 2053);
 
 fn mk_query(qname: &str, qtype: QueryType) -> DnsPacket {
     let header = DnsHeader::builder()
-        .id(818)
+        .id(818) // This should be a random number
         .questions(1)
         .recursion_desired(true)
         .build();
