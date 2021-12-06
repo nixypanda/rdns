@@ -1,63 +1,114 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 use typed_builder::TypedBuilder;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ResultCode {
-    NOERROR = 0,
-    FORMERR = 1,
-    SERVFAIL = 2,
-    NXDOMAIN = 3,
-    NOTIMP = 4,
-    REFUSED = 5,
+// All communications inside of the domain protocol are carried in a single
+// format called a message.  The top level format of message is divided
+// into 5 sections (some of which are empty in certain cases) shown below:
+//
+//     +---------------------+
+//     |        Header       |
+//     +---------------------+
+//     |       Question      | the question for the name server
+//     +---------------------+
+//     |        Answer       | RRs answering the question
+//     +---------------------+
+//     |      Authority      | RRs pointing toward an authority
+//     +---------------------+
+//     |      Additional     | RRs holding additional information
+//     +---------------------+
+//
+// The header section is always present.  The header includes fields that
+// specify which of the remaining sections are present, and also specify
+// whether the message is a query or a response, a standard query or some
+// other opcode, etc.
+#[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
+pub struct DnsPacket {
+    pub header: DnsHeader,
+
+    #[builder(default = vec![])]
+    pub questions: Vec<DnsQuestion>,
+    #[builder(default = vec![])]
+    pub answers: Vec<DnsRecord>,
+    #[builder(default = vec![])]
+    pub authorities: Vec<DnsRecord>,
+    #[builder(default = vec![])]
+    pub resources: Vec<DnsRecord>,
 }
 
-impl ResultCode {
-    pub fn from_num(num: u8) -> ResultCode {
-        match num {
-            1 => ResultCode::FORMERR,
-            2 => ResultCode::SERVFAIL,
-            3 => ResultCode::NXDOMAIN,
-            4 => ResultCode::NOTIMP,
-            5 => ResultCode::REFUSED,
-            _ => ResultCode::NOERROR,
-        }
-    }
-}
-
+// The header contains the following fields:
+//                                  1  1  1  1  1  1
+//    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                      ID                       |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                    QDCOUNT                    |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                    ANCOUNT                    |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                    NSCOUNT                    |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                    ARCOUNT                    |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 #[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
 pub struct DnsHeader {
-    pub id: u16, // 16 bits
+    // A random identifier is assigned to query packets. Response packets must reply with the same
+    // id. This is needed to differentiate responses due to the stateless nature of UDP.
+    pub id: u16,
 
+    // 0 for queries, 1 for responses.
     #[builder(default = false)]
-    pub response: bool, // 1 bit
+    pub response: bool,
+
+    // A four bit field that specifies kind of query in this message.  This value is set by the
+    // originator of a query and copied into the response.  The values are:
+    // 0     a standard query (QUERY)
+    // 1     an inverse query (IQUERY)
+    // 2     a server status request (STATUS)
+    // 3-15  reserved for future use
     #[builder(default = 0)]
-    pub opcode: u8, // 4 bits
+    pub opcode: u8,
+    // Authoritative Answer - this bit is valid in responses, and specifies that the responding
+    // name server is an authority for the domain name in question section.
     #[builder(default = false)]
-    pub authoritative_answer: bool, // 1 bit
+    pub authoritative_answer: bool,
     #[builder(default = false)]
-    pub truncated_message: bool, // 1 bit
+    // TrunCation - specifies that this message was truncated due to length greater than that
+    // permitted on the transmission channel.
+    pub truncated_message: bool,
+    // Recursion Desired - this bit may be set in a query and is copied into the response.  If RD
+    // is set, it directs the name server to pursue the query recursively.  Recursive query support
+    // is optional.
     #[builder(default = false)]
-    pub recursion_desired: bool, // 1 bit
+    pub recursion_desired: bool,
 
+    // Recursion Available - this be is set or cleared in a response, and denotes whether recursive
+    // query support is available in the name server.
     #[builder(default = false)]
-    pub recursion_available: bool, // 1 bit
+    pub recursion_available: bool,
     #[builder(default = false)]
-    pub z: bool, // 1 bit
+    // Originally reserved for later use, but now used for DNSSEC queries.
+    pub z: bool,
     #[builder(default = false)]
-    pub authed_data: bool, // 1 bit
+    pub authed_data: bool,
     #[builder(default = false)]
     pub checking_disabled: bool,
     #[builder(default = ResponseCode::NOERROR)]
     pub rescode: ResponseCode, // 4 bits
 
+    // The number of entries in the Question Section
     #[builder(default = 0)]
-    pub questions: u16, // 16 bits
+    pub questions: u16,
+    // The number of entries in the Answer Section
     #[builder(default = 0)]
-    pub answers: u16, // 16 bits
+    pub answers: u16,
+    // The number of entries in the Authority Section
     #[builder(default = 0)]
-    pub authoritative_entries: u16, // 16 bits
+    pub authoritative_entries: u16,
+    // The number of entries in the Additional Section
     #[builder(default = 0)]
-    pub resource_entries: u16, // 16 bits
+    pub resource_entries: u16,
 }
 
 impl DnsHeader {
@@ -112,6 +163,29 @@ impl ResponseCode {
     }
 }
 
+// The question section is used to carry the "question" in most queries, i.e., the parameters that
+// define what is being asked.  The section contains QDCOUNT (usually 1) entries, each of the
+// following format:
+//                                  1  1  1  1  1  1
+//    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                                               |
+//  /                     QNAME                     /
+//  /                                               /
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                     QTYPE                     |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//  |                     QCLASS                    |
+//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DnsQuestion {
+    // The domain name, encoded as a sequence of labels as described below
+    pub name: String,
+    // The Record Type
+    pub qtype: QueryType,
+    // The class is almost always set to 1, so we will not represent it here
+}
+
 #[derive(PartialEq, Eq, Debug, Clone, Hash, Copy)]
 pub enum QueryType {
     UNKNOWN(u16),
@@ -146,20 +220,39 @@ impl QueryType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DnsQuestion {
-    pub name: String,
-    pub qtype: QueryType,
-}
-
+// The answer, authority, and additional sections all share the same format: a variable number of
+// resource records, where the number of records is specified in the corresponding count field in
+// the header.  Each resource record has the following format:
+//                                     1  1  1  1  1  1
+//       0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//     |                                               |
+//     /                                               /
+//     /                      NAME                     /
+//     |                                               |
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//     |                      TYPE                     |
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//     |                     CLASS                     |
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//     |                      TTL                      |
+//     |                                               |
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//     |                   RDLENGTH                    |
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
+//     /                     RDATA                     /
+//     /                                               /
+//     +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//
+// | ID | Name  | Description                              | Encoding                                         |
+// |----+-------+------------------------------------------+--------------------------------------------------|
+// | 1  | A     | Alias - Mapping names to IP addresses    | Preamble + Four bytes for IPv4 adress            |
+// | 2  | NS    | Name Server - The DNS server address     | Preamble + Label Sequence                        |
+// | 5  | CNAME | Canonical Name - Maps names to names     | Preamble + Label Sequence                        |
+// | 15 | MX    | Mail eXchange - mail server for a domain | Preamble + 2-bytes for priority + Label Sequence |
+// | 28 | AAAA  | IPv6 alias                               | Premable + Sixteen bytes for IPv6 adress         |
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DnsRecord {
-    UNKNOWN {
-        domain: String,
-        qtype: u16,
-        data_len: u16,
-        ttl: u32,
-    },
     A {
         domain: String,
         addr: Ipv4Addr,
@@ -186,20 +279,12 @@ pub enum DnsRecord {
         addr: Ipv6Addr,
         ttl: u32,
     },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, TypedBuilder)]
-pub struct DnsPacket {
-    pub header: DnsHeader,
-
-    #[builder(default = vec![])]
-    pub questions: Vec<DnsQuestion>,
-    #[builder(default = vec![])]
-    pub answers: Vec<DnsRecord>,
-    #[builder(default = vec![])]
-    pub authorities: Vec<DnsRecord>,
-    #[builder(default = vec![])]
-    pub resources: Vec<DnsRecord>,
+    UNKNOWN {
+        domain: String,
+        qtype: u16,
+        data_len: u16,
+        ttl: u32,
+    },
 }
 
 impl DnsPacket {
