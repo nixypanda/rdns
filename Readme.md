@@ -126,3 +126,12 @@ Armed with this knowledge we can easily come up with an [implementation](./src/m
 1. Start the server: `RUST_LOG=<log_level> cargo run --bin rdns`
 2. Use a client to contact the server: `dig @127.0.0.1 -p 2053 www.google.com`
 
+
+## How do I write my own?
+
+You can checkout the branch `my-own` which only has the `dnsparse` workspace
+crate and the basic folder structure in place. So you can just checkout that
+branch and start writing your own version, without delving into the packet
+parsing and writing packet buffers.
+
+Happy learning!
